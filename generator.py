@@ -22,8 +22,8 @@ class DatabaseConnection:
         id = cursor.fetchone()[0]
         return id
 
-    def get_all_roles(self):
-        query = "SELECT id FROM Roles"
+    def get_all_role_ids(self):
+        query = "SELECT RoleID FROM Roles"
         cursor = self.connection.cursor()
         cursor.execute(query)
         roles = [row[0] for row in cursor.fetchall()]
@@ -78,6 +78,17 @@ class DatabaseManager(DatabaseConnection):
 
         self.send_query(create_employee_query)
 
+    def create_employee_roles_table(self):
+        create_employee_roles_query = """
+            CREATE TABLE EmployeeRoles (
+            RoleID int NOT NULL,
+            EmployeeID int  NOT NULL,
+            CONSTRAINT EmployeeRoles_pk PRIMARY KEY (EmployeeID,RoleID)
+            );
+            """
+
+        self.send_query(create_employee_roles_query)
+
 class DataGenerator(DatabaseConnection):
     def __init__(self):
         super().__init__()
@@ -110,9 +121,9 @@ class DataGenerator(DatabaseConnection):
                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
-        insert_role_query = "INSERT INTO EmployeeRoles (employee_id, role_id) VALUES (?, ?)"
+        insert_role_query = "INSERT INTO EmployeeRoles (EmployeeId, RoleId) VALUES (?, ?)"
 
-        roles = self.get_all_roles()
+        roles = self.get_all_role_ids()
 
         f = self.faker
         employee_data = [
@@ -129,9 +140,9 @@ class DataGenerator(DatabaseConnection):
             employee_id = self.get_last_inserted_id()
             self.__insert_to_database(insert_role_query, (employee_id, role_id))
 
-
-c = DataGenerator()
-c.insert_roles()
+dm = DatabaseManager()
+dg = DataGenerator()
+dg.insert_to_employee(5)
 
 
 
