@@ -4,7 +4,6 @@ from faker import Faker
 
 class DatabaseConnection:
     def __init__(self):
-        self.faker = Faker()
         self.connection = None
         try:
             self.connection = pyodbc.connect(
@@ -58,9 +57,31 @@ class DatabaseManager(DatabaseConnection):
 
         self.send_query(create_roles_query)
 
+    def create_employee_table(self):
+        create_employee_query = """
+            CREATE TABLE Employee (
+            EmployeeID int IDENTITY(1,1) NOT NULL, 
+            FirstName varchar(50) NOT NULL,
+            LastName varchar(50) NOT NULL,
+            Email varchar(100) NOT NULL,
+            Login varchar(50) NOT NULL,
+            Password varchar(50) NOT NULL,
+            Address varchar(100) NOT NULL,
+            City varchar(50) NOT NULL,
+            Region varchar(50) NOT NULL,
+            PostalCode varchar(50) NOT NULL,
+            Country varchar(50) NOT NULL,
+            Phone varchar(50) NOT NULL,
+            CONSTRAINT Employee_pk PRIMARY KEY (EmployeeID)
+            );
+            """
+
+        self.send_query(create_employee_query)
+
 class DataGenerator(DatabaseConnection):
     def __init__(self):
         super().__init__()
+        self.faker = Faker()
 
     def __insert_to_database(self, insert_query, data):
         try:
@@ -89,7 +110,7 @@ class DataGenerator(DatabaseConnection):
                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
-        insert_role_query = "INSERT INTO employee_roles (employee_id, role_id) VALUES (?, ?)"
+        insert_role_query = "INSERT INTO EmployeeRoles (employee_id, role_id) VALUES (?, ?)"
 
         roles = self.get_all_roles()
 
