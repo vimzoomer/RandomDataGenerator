@@ -140,9 +140,7 @@ class DataGenerator(DatabaseConnection):
             employee_id = self.get_last_inserted_id()
             self.__insert_to_database(insert_role_query, (employee_id, role_id))
 
-dm = DatabaseManager()
-dg = DataGenerator()
-dg.insert_to_employee(5)
+
 
 
 
