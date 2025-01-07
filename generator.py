@@ -22,22 +22,34 @@ class DatabaseConnection:
         id = cursor.fetchone()[0]
         return id
 
-    def get_all_role_ids(self):
-        query = "SELECT RoleID FROM Roles"
-        cursor = self.connection.cursor()
-        cursor.execute(query)
-        roles = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        return roles
+    def get_all(self, column, table):
+        query = f"SELECT {column} FROM {table}"
+        values = self.send_query(query, None, True)
+        return [val[0] for val in values]
 
-    def send_query(self, query):
+    def send_query(self, query, args=None, fetch=False):
+        cursor = None
         try:
             cursor = self.connection.cursor()
-            cursor.execute(query)
-            self.connection.commit()
-            cursor.close()
+
+            if args:
+                cursor.execute(query, args)
+            else:
+                cursor.execute(query)
+
+            if not fetch:
+                self.connection.commit()
+
+            if fetch:
+                return cursor.fetchall()
         except pyodbc.Error as ex:
             print("Error executing query:", ex)
+            self.connection.rollback()
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+
 
 class DatabaseManager(DatabaseConnection):
     def __init__(self):
@@ -47,83 +59,51 @@ class DatabaseManager(DatabaseConnection):
         drop_query = f"DROP TABLE IF EXISTS {table_name};"
         self.send_query(drop_query)
 
-    def create_roles_table(self):
-        create_roles_query = """
-                CREATE TABLE Roles (
-                    RoleID INT IDENTITY(1,1) PRIMARY KEY,  
-                    RoleName VARCHAR(50) NOT NULL          
-                );
-                """
+    def execute_query_from_file(self, filename):
+        with open(filename, "r") as sql_file:
+            query = sql_file.read()
 
-        self.send_query(create_roles_query)
+        self.send_query(query)
 
-    def create_employee_table(self):
-        create_employee_query = """
-            CREATE TABLE Employee (
-            EmployeeID int IDENTITY(1,1) NOT NULL, 
-            FirstName varchar(50) NOT NULL,
-            LastName varchar(50) NOT NULL,
-            Email varchar(100) NOT NULL,
-            Login varchar(50) NOT NULL,
-            Password varchar(50) NOT NULL,
-            Address varchar(100) NOT NULL,
-            City varchar(50) NOT NULL,
-            Region varchar(50) NOT NULL,
-            PostalCode varchar(50) NOT NULL,
-            Country varchar(50) NOT NULL,
-            Phone varchar(50) NOT NULL,
-            CONSTRAINT Employee_pk PRIMARY KEY (EmployeeID)
-            );
-            """
+    def insert_employee_role(self, employee_id, role_name):
+        insert_role_query = """ 
+                            INSERT INTO EmployeeRoles (EmployeeID, RoleID)
+                            SELECT ?, RoleID
+                            FROM Roles
+                            WHERE RoleName = ?
+                            """
 
-        self.send_query(create_employee_query)
+        self.send_query(insert_role_query, (employee_id, role_name))
 
-    def create_employee_roles_table(self):
-        create_employee_roles_query = """
-            CREATE TABLE EmployeeRoles (
-            RoleID int NOT NULL,
-            EmployeeID int  NOT NULL,
-            CONSTRAINT EmployeeRoles_pk PRIMARY KEY (EmployeeID,RoleID)
-            );
-            """
 
-        self.send_query(create_employee_roles_query)
+    def insert_employee(self, first_name, last_name, email, login, password, address, city, region, postal_code, country, phone, role):
+        insert_employee_query = """
+                                INSERT INTO Employee (
+                                FirstName, LastName, Email, Login, Password,
+                                Address, City, Region, PostalCode, Country, Phone
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """
 
-class DataGenerator(DatabaseConnection):
-    def __init__(self):
-        super().__init__()
-        self.faker = Faker()
-
-    def __insert_to_database(self, insert_query, data):
-        try:
-            cursor = self.connection.cursor()
-
-            cursor.execute(insert_query, data)
-
-            self.connection.commit()
-            cursor.close()
-        except pyodbc.Error as ex:
-            print("Błąd wykonania zapytania:", ex)
+        self.send_query(insert_employee_query, (first_name, last_name, email, login, password, address, city, region, postal_code, country, phone))
+        employee_id = self.get_last_inserted_id()
+        self.insert_employee_role(employee_id, role)
 
     def insert_roles(self):
         roles = ['Lecturer', 'Translator', 'OfficeWorker', 'Accountant']
 
-        insert_query = "INSERT INTO roles (RoleName) VALUES (?)"
+        insert_query = "INSERT INTO Roles (RoleName) VALUES (?)"
 
         for data in roles:
-            self.__insert_to_database(insert_query, (data,))
+            self.send_query(insert_query, (data,))
+
+class DataGenerator:
+    def __init__(self):
+        super().__init__()
+        self.faker = Faker()
+        self.dm = DatabaseManager()
 
     def insert_to_employee(self, n):
-        insert_employee_query = """
-                 INSERT INTO Employee (
-                     FirstName, LastName, Email, Login, Password,
-                     Address, City, Region, PostalCode, Country, Phone
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        insert_role_query = "INSERT INTO EmployeeRoles (EmployeeId, RoleId) VALUES (?, ?)"
-
-        roles = self.get_all_role_ids()
+        roles = self.dm.get_all("RoleName", "Roles")
 
         f = self.faker
         employee_data = [
@@ -135,10 +115,10 @@ class DataGenerator(DatabaseConnection):
         ]
 
         for data in employee_data:
-            self.__insert_to_database(insert_employee_query, data)
-            role_id = random.choice(roles)
-            employee_id = self.get_last_inserted_id()
-            self.__insert_to_database(insert_role_query, (employee_id, role_id))
+            role = random.choice(roles)
+            self.dm.insert_employee(*data, role)
+
+
 
 
 
