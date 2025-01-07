@@ -50,6 +50,12 @@ class DatabaseConnection:
             query = sql_file.read()
         self.send_query(query, args, fetch)
 
+    def get_number_of_users_and_services(self):
+        num_users = self.send_query("SELECT COUNT(*) FROM [User]", None, True)[0][0]
+
+        num_services = self.send_query("SELECT COUNT(*) FROM Services", None, True)[0][0]
+
+        return num_users, num_services
 
 class DatabaseManager(DatabaseConnection):
     def __init__(self):
@@ -68,6 +74,21 @@ class DatabaseManager(DatabaseConnection):
 
         for data in roles:
             self.send_query_from_file("./inserts/insert_roles.sql", (data,))
+
+    def insert_user(self, first_name, last_name, email, login, password, address, city, region, postal_code, country, phone):
+        self.send_query_from_file("./inserts/insert_user.sql", (first_name, last_name, email, login, password, address, city, region, postal_code, country, phone))
+
+    def insert_order_details(self, order_id, service_id, order_date, shipped_date):
+        self.send_query_from_file("./inserts/insert_order_details.sql", (order_id, service_id, order_date, shipped_date))
+
+    def insert_order(self, order_date, ship_address, ship_city, user_id, cart_details):
+        self.send_query_from_file("./inserts/insert_order.sql", (order_date, ship_address, ship_city, user_id))
+
+        order_id = self.send_query("SELECT @@IDENTITY", None, True)[0][0]
+
+        for data in cart_details:
+            self.insert_order_details(order_id, *data)
+
 
 class DataGenerator:
     def __init__(self):
@@ -90,6 +111,33 @@ class DataGenerator:
         for data in employee_data:
             role = random.choice(roles)
             self.dm.insert_employee(*data, role)
+
+    def insert_to_user(self,  n):
+        f = self.faker
+        user_data = [
+            (
+                f.first_name(), f.last_name(), f.unique.email(), f.unique.user_name(), f.password(),
+                f.address(), f.city(), f.state(), f.zipcode(), f.country(), f.phone_number()
+            )
+            for _ in range(n)
+        ]
+
+        for data in user_data:
+            self.dm.insert_user(*data)
+
+    def insert_orders(self, n):
+        num_users, num_services = self.dm.get_number_of_users_and_services()
+
+        f = self.faker
+        for _ in range(n):
+            order_date = f.date_this_year()
+            order_data = (random.randint(1, num_users), order_date, f.address().replace("\n", " "), f.city())
+
+            num_order_details = random.randint(1, 5)
+
+            cart_details = [(f.random.randint(1, num_services), order_date, f.date_this_year()) for _ in range(num_order_details)]
+
+            self.dm.insert_order(*order_data, cart_details)
 
 
 
