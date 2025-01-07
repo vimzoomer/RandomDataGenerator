@@ -48,7 +48,7 @@ class DatabaseConnection:
     def send_query_from_file(self, filename, args = None, fetch = False):
         with open(filename, "r") as sql_file:
             query = sql_file.read()
-        self.send_query(query, args, fetch)
+        return self.send_query(query, args, fetch)
 
     def get_number_of_users_and_services(self):
         num_users = self.send_query("SELECT COUNT(*) FROM [User]", None, True)[0][0]
