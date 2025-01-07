@@ -17,15 +17,7 @@ class DatabaseConnection:
             print("Błąd połączenia:", ex)
 
     def get_last_inserted_id(self):
-        cursor = self.connection.cursor()
-        cursor.execute("SELECT @@IDENTITY")
-        id = cursor.fetchone()[0]
-        return id
-
-    def get_all(self, column, table):
-        query = f"SELECT {column} FROM {table}"
-        values = self.send_query(query, None, True)
-        return [val[0] for val in values]
+        return self.send_query_from_file("./selects/select_last_id.sql", None, True)[0][0]
 
     def send_query(self, query, args=None, fetch=False):
         cursor = None
@@ -49,52 +41,33 @@ class DatabaseConnection:
         finally:
             if cursor:
                 cursor.close()
+    def drop_table(self, table_name):
+        drop_query = f"DROP TABLE IF EXISTS {table_name};"
+        self.send_query(drop_query)
+
+    def send_query_from_file(self, filename, args = None, fetch = False):
+        with open(filename, "r") as sql_file:
+            query = sql_file.read()
+        self.send_query(query, args, fetch)
 
 
 class DatabaseManager(DatabaseConnection):
     def __init__(self):
         super().__init__()
 
-    def drop_table(self, table_name):
-        drop_query = f"DROP TABLE IF EXISTS {table_name};"
-        self.send_query(drop_query)
-
-    def execute_query_from_file(self, filename):
-        with open(filename, "r") as sql_file:
-            query = sql_file.read()
-
-        self.send_query(query)
-
     def insert_employee_role(self, employee_id, role_name):
-        insert_role_query = """ 
-                            INSERT INTO EmployeeRoles (EmployeeID, RoleID)
-                            SELECT ?, RoleID
-                            FROM Roles
-                            WHERE RoleName = ?
-                            """
-
-        self.send_query(insert_role_query, (employee_id, role_name))
-
+        self.send_query_from_file("./inserts/insert_employee_role.sql", (employee_id, role_name))
 
     def insert_employee(self, first_name, last_name, email, login, password, address, city, region, postal_code, country, phone, role):
-        insert_employee_query = """
-                                INSERT INTO Employee (
-                                FirstName, LastName, Email, Login, Password,
-                                Address, City, Region, PostalCode, Country, Phone
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                """
-
-        self.send_query(insert_employee_query, (first_name, last_name, email, login, password, address, city, region, postal_code, country, phone))
+        self.send_query_from_file("./inserts/insert_employee.sql", (first_name, last_name, email, login, password, address, city, region, postal_code, country, phone))
         employee_id = self.get_last_inserted_id()
         self.insert_employee_role(employee_id, role)
 
     def insert_roles(self):
         roles = ['Lecturer', 'Translator', 'OfficeWorker', 'Accountant']
 
-        insert_query = "INSERT INTO Roles (RoleName) VALUES (?)"
-
         for data in roles:
-            self.send_query(insert_query, (data,))
+            self.send_query_from_file("./inserts/insert_roles.sql", (data,))
 
 class DataGenerator:
     def __init__(self):
@@ -103,7 +76,7 @@ class DataGenerator:
         self.dm = DatabaseManager()
 
     def insert_to_employee(self, n):
-        roles = self.dm.get_all("RoleName", "Roles")
+        roles = ['Lecturer', 'Translator', 'OfficeWorker', 'Accountant']
 
         f = self.faker
         employee_data = [
