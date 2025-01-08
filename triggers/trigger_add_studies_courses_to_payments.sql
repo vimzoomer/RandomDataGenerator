@@ -1,4 +1,4 @@
-CREATE TRIGGER trg_AddCoursesToPayments
+CREATE TRIGGER trg_AddStudiesCoursesToPayments
 ON OrderDetails
 AFTER INSERT
 AS
