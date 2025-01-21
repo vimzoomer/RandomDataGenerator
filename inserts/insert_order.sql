@@ -1,2 +1,5 @@
-INSERT INTO Orders (OrderDate, ShipAddress, ShipCity, UserID)
-VALUES (?, ?, ?, ?)
+EXEC InsertOrder
+    @UserID = ?,
+    @OrderDate = ?,
+    @ShipAddress = ?,
+    @ShipCity = ?;

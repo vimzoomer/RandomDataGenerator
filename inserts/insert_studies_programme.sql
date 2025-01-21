@@ -1,0 +1,3 @@
+EXEC InsertStudiesProgramme
+    @Name = ?,
+    @Description = ?;
