@@ -278,7 +278,7 @@ class DataGenerator:
         min_module, max_module = self.dm.get_min_max("StudiesProgrammeModules", "ModuleProgrammeID")
 
         for _ in range(n):
-            course_id = random.choice([None, random.randint(min_course, max_course)])
+            course_id = None
             lecturer_id = random.randint(min_employees, max_employees)
             individual_price = round(random.uniform(50.0, 500.0), 2)
             start_date = self.faker.date_this_year(before_today=False, after_today=True)
@@ -286,7 +286,7 @@ class DataGenerator:
                 days=random.randint(30, 90))
             price = round(random.uniform(100.0, 1000.0), 2)
             module_programme_id = random.choice([None, random.randint(min_module, max_module)])
-            studies_id = random.choice([None, random.randint(min_studies, max_studies)])
+            studies_id = random.randint(min_studies, max_studies)
             person_limit = random.randint(10, 30)
 
             self.dm.insert_module(course_id, lecturer_id, individual_price, start_date, end_date, price,
