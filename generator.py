@@ -299,7 +299,7 @@ class DataGenerator:
             programme_id = random.randint(min_module, max_module)
             price = round(random.uniform(100.0, 5000.0), 2)
             start_date = self.faker.date_this_year(before_today=False, after_today=True)
-            person_limit = random.randint(10, 100)
+            person_limit = random.randint(1, 10)
             ready = random.choice([True, False])
 
             self.dm.insert_studies(programme_id, price, start_date, person_limit, ready)
